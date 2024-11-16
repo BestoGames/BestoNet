@@ -16,18 +16,18 @@ BestoNet is a custom rollback networking solution developed for the fighting gam
 
 ## Background
 
-We developed BestoNet to replace our initial Unity GGPO implementation, which faced several challenges:
+Originally we used Unity GGPO but there were some issues.
 - Unplayable connections at long distances (experiencing ~7 frames of rollback)
 - Maintenance difficulties due to GGPO's C++ codebase
 - System instability during poor network conditions
 
 ## Core Features
 
-### Advanced Rollback Management
-- **Speculative Frame Saving**: Optimizes memory usage by selectively saving frames during rollback
+### Rollback Management
+- **Speculative Frame Saving**: Saves CPU time and preventing 7 frame rollbacks
     - Currently saves the midpoint frame, confirm frame, and end frame
-- **Input Prediction**: Repeats last received input to avoid unnecessary rollbacks when predictions are correct
-- **Rift Management**: Configurable options for handling one-sided rollback scenarios
+- **Input Prediction**: Will predict the next input using the previously received input
+- **Rift Management**: Many different options to deal with one sided rollback and game syncing
 - **Reliable Input Messaging**: Maintains a 7-frame input buffer to handle packet loss and out-of-order delivery
 
 ## Implementation Requirements
@@ -35,7 +35,7 @@ We developed BestoNet to replace our initial Unity GGPO implementation, which fa
 ### Essential Components
 1. **Frame Timing System**
     - Requires precise frame length control
-    - Current implementation uses a separate thread for accurate timing
+    - Current implementation in IS uses a separate thread for accurate timing
 
 2. **State Management**
     - Save/Load state system
