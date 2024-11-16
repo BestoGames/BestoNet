@@ -54,10 +54,6 @@ Originally we used Unity GGPO but there were some issues.
 
 **Note**: The MaxRollbackFrames setting currently shows 4 frames but effectively provides ~8 frames of rollback in Idol Showdown. This discrepancy is known but functional.
 
-## Quick Start
-
-Check our [Getting Started Guide](docs/getting-started.md) for detailed setup instructions.
-
 ## Credits
 
 This implementation draws inspiration from:
