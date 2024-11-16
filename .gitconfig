@@ -1,0 +1,55 @@
+﻿[core]
+    autocrlf = true
+    safecrlf = warn
+    eol = lf
+    # Improve diff output
+    whitespace = trailing-space,space-before-tab
+    # Enable parallel I/O for operations like checkout
+    preloadindex = true
+    # Increase buffer size for better performance with large files
+    packedGitLimit = 512m
+    packedGitWindowSize = 512m
+
+[filter "lfs"]
+    clean = git-lfs clean -- %f
+    smudge = git-lfs smudge -- %f
+    process = git-lfs filter-process
+    required = true
+
+[pull]
+    # Always rebase instead of merge on pull
+    rebase = true
+
+[fetch]
+    # Remove remote-tracking branches that no longer exist on the remote
+    prune = true
+    # Also prune tags
+    pruneTags = true
+
+[push]
+    # Push only the current branch to the upstream branch
+    default = current
+    # Automatically create upstream branch
+    autoSetupRemote = true
+
+[rebase]
+    # Automatically stash/unstash changes when rebasing
+    autoStash = true
+
+[diff]
+    # Better diff algorithm
+    algorithm = histogram
+    # Detect renamed files
+    renames = copies
+
+[color]
+    # Enable color output
+    ui = auto
+
+[help]
+    # Suggest corrections
+    autocorrect = 20
+
+[init]
+    # Use 'main' as the default branch name
+    defaultBranch = main

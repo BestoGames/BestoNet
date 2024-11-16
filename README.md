@@ -1,43 +1,89 @@
-# BestoNet
-### What is Besto Net
-BestoNet is a custom networking system made for Idol Showdown, this is written in C# Unity and utilizes Facepunch Steamworks. This repo contains the rollback and message handling portion, but more will be included soon
+# ISD Rollback
 
-Here's our steam page!
-https://store.steampowered.com/app/1742020/Idol_Showdown/
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg?style=flat)](docs/CONTRIBUTING.md)
+[![Maintenance](https://img.shields.io/badge/Maintained%3F-yes-green.svg)](https://github.com/bryanpaik/isd-rollback/graphs/commit-activity)
+[![Discord](https://img.shields.io/discord/YOUR_DISCORD_ID)](https://discord.gg/)
 
-### Why was this made
-Originally we used Unity GGPO but there were some issues.
-1. In long distance connections, connections were unplayable due to having around 7 frames of rollback
-2. GGPO is in C++, this makes it harder to mantain since its using a different language
-3. In our setup, GGPO would cause hard crashes in bad network conditions
+ISD Rollback is a custom rollback networking solution developed for the fighting game [Idol Showdown](https://store.steampowered.com/app/1742020/Idol_Showdown/). Built in C# for Unity, it integrates with Facepunch Steamworks to provide a robust and efficient rollback implementation.
 
-### Features
-1. Speculative saving, during rollbacks it will only save certain frames of the rollback. Right now it's set to the midpoint and the confirm frame, it will also always save at the end of the frame
-2. Input prediction (it will repeat the last received input), if the predicted frame is correct it will not perform a rollback
-3. Rift management, has many options to tune and deal with one sided rollback
-4. Reliable input messaging, current set to send the past 7 frames to account for lost packets/out of order packets
+## 📚 Documentation
 
-### What you need
-1. Some way to extend your frame length, we are using a seperate thread as a timer to get accurate frame timing
-2. Spectator! this is not hooked up to a spectator system, but there is a call to send confirm frame inputs to a spectator buffer
-3. Desync manager, is not a part of this so that would need to be made as well
-4. Demo System, also needs to be made probably just need to save the confirmed inputs
-5. Save/Load states, you need to have a deterministic game, I reccommend not using the byte[] system like we did since BinaryWrite/Read is very inefficient and hard to work with.
-6. No syncing system at the moment thats included, right now it just uses the first 10 frames to sync up the games
-Obviously there is alot more things you need to make a full fighting game, but this is how you would integrate this system
+- [Contributing Guide](docs/CONTRIBUTING.md)
+- [Code of Conduct](docs/CODE_OF_CONDUCT.md)
+- [Development Roadmap](docs/ROADMAP.md)
+- [API Documentation](docs/API.md)
 
-### Planned Features
-- Frame lock system
-- Spectator Implementation
-- Integrated as a Unity library
-- Test game is made for this library
+## Background
 
-### Current Unity Settings
-![image](https://github.com/user-attachments/assets/f78cfd7d-f72e-4138-a018-2a37c12a43f6)
+We developed ISD Rollback to replace our initial Unity GGPO implementation, which faced several challenges:
+- Unplayable connections at long distances (experiencing ~7 frames of rollback)
+- Maintenance difficulties due to GGPO's C++ codebase
+- System instability during poor network conditions
 
-This will need to be adjusted depending on your needs. Something to note is that MaxRollbackFrames isn't accurate, it's set to 4 which in IS is equivalent to ~8 RF. It works good enough, so I never bothered to fix it yet.
+## Core Features
 
-### Credits
-This takes inspiration from the MK/Injustice GDC talk, Zinac's youtube rollback guide, GekkoNet's Rollback System.
-Also, this wouldn't be possible without RinIota, who built the original networking system, which helped as a foundation to build this new rollback system
+### Advanced Rollback Management
+- **Speculative Frame Saving**: Optimizes memory usage by selectively saving frames during rollback
+    - Currently saves the midpoint frame, confirm frame, and end frame
+- **Input Prediction**: Repeats last received input to avoid unnecessary rollbacks when predictions are correct
+- **Rift Management**: Configurable options for handling one-sided rollback scenarios
+- **Reliable Input Messaging**: Maintains a 7-frame input buffer to handle packet loss and out-of-order delivery
 
+## Implementation Requirements
+
+### Essential Components
+1. **Frame Timing System**
+    - Requires precise frame length control
+    - Current implementation uses a separate thread for accurate timing
+
+2. **State Management**
+    - Save/Load state system
+    - Requires deterministic game logic
+    - Recommendation: Avoid using byte[] with BinaryWriter/Reader due to inefficiency
+
+### Additional Systems Needed
+- **Spectator System**: Framework prepared with confirm frame input buffer
+- **Desync Detection**: Requires custom implementation
+- **Demo Recording**: Suggested implementation through confirmed input recording
+- **Game Synchronization**: Currently uses first 10 frames for basic synchronization
+
+## Configuration
+
+![Rollback Settings](assets/rollback_settings.png)
+
+**Current Unity Configuration Settings**
+
+**Note**: The MaxRollbackFrames setting currently shows 4 frames but effectively provides ~8 frames of rollback in Idol Showdown. This discrepancy is known but functional.
+
+## Installation
+
+```bash
+# Using Unity Package Manager (UPM)
+{
+  "dependencies": {
+    "com.bestogames.isd-rollback": "https://github.com/bryanpaik/isd-rollback.git"
+  }
+}
+```
+
+## Quick Start
+
+Check our [Getting Started Guide](docs/getting-started.md) for detailed setup instructions.
+
+## Credits
+
+This implementation draws inspiration from:
+- MK/Injustice GDC presentation
+- Zinac's rollback implementation guide
+- GekkoNet's Rollback System
+
+Special thanks to [Rin Iota](https://x.com/sss_iota_sss) for developing the original networking foundation that enabled ISD Rollback's creation.
+
+## Contributing
+
+This is an open-source project accepting community contributions. Please read our [Contributing Guide](docs/CONTRIBUTING.md) and [Code of Conduct](docs/CODE_OF_CONDUCT.md) before submitting pull requests.
+
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
