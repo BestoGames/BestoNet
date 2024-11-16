@@ -1,6 +1,6 @@
-# IS Rollback
-### What is IS Rollback
-IS Rollback is a custom rollback system made for Idol Showdown, this is written in C# Unity and utilizes Facepunch Steamworks.
+# ISD Rollback
+### What is ISD Rollback
+ISD Rollback is a custom rollback system made for Idol Showdown, this is written in C# Unity and utilizes Facepunch Steamworks.
 
 Here's our steam page!
 https://store.steampowered.com/app/1742020/Idol_Showdown/
