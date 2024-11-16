@@ -3,8 +3,6 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg?style=flat)](docs/CONTRIBUTING.md)
 [![Maintenance](https://img.shields.io/badge/Maintained%3F-yes-green.svg)](https://github.com/bryanpaik/isd-rollback/graphs/commit-activity)
-[![Discord](https://img.shields.io/discord/YOUR_DISCORD_ID)](https://discord.gg/)
-
 BestoNet is a custom rollback networking solution developed for the fighting game [Idol Showdown](https://store.steampowered.com/app/1742020/Idol_Showdown/). Built in C# for Unity, it integrates with Facepunch Steamworks to provide a robust and efficient rollback implementation.
 
 ## 📚 Documentation
@@ -55,17 +53,6 @@ Originally we used Unity GGPO but there were some issues.
 **Current Unity Configuration Settings**
 
 **Note**: The MaxRollbackFrames setting currently shows 4 frames but effectively provides ~8 frames of rollback in Idol Showdown. This discrepancy is known but functional.
-
-## Installation
-
-```bash
-# Using Unity Package Manager (UPM)
-{
-  "dependencies": {
-    "com.bestogames.bestonet": "https://github.com/bryanpaik/bestonet.git"
-  }
-}
-```
 
 ## Quick Start
 
