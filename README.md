@@ -18,6 +18,7 @@ Originally we used Unity GGPO but there were some issues.
 - Unplayable connections at long distances (experiencing ~7 frames of rollback)
 - Maintenance difficulties due to GGPO's C++ codebase
 - System instability during poor network conditions
+- Using GGPO required a relay system that added extra latency to online matches
 
 ## Core Features
 
