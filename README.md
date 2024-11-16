@@ -11,7 +11,6 @@ BestoNet is a custom rollback networking solution developed for the fighting gam
 - [Contributing Guide](docs/CONTRIBUTING.md)
 - [Code of Conduct](docs/CODE_OF_CONDUCT.md)
 - [Development Roadmap](docs/ROADMAP.md)
-- [API Documentation](docs/API.md)
 
 ## Background
 
