@@ -6,6 +6,8 @@
 
 BestoNet is a custom rollback networking solution developed for the fighting game [Idol Showdown](https://store.steampowered.com/app/1742020/Idol_Showdown/). Built in C# for Unity, it integrates with Facepunch Steamworks to provide a robust and efficient rollback implementation.
 
+This a work in progress as a library, and won't work right out the box
+
 ## 📚 Documentation
 
 - [Contributing Guide](docs/CONTRIBUTING.md)
