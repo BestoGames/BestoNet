@@ -1,4 +1,4 @@
-# Besto Net
+# BestoNet
 ### What is Besto Net
 ISD Rollback is a custom rollback system made for Idol Showdown, this is written in C# Unity and utilizes Facepunch Steamworks.
 
