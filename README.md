@@ -32,12 +32,12 @@ Obviously there is alot more things you need to make a full fighting game, but t
 - Integrated as a Unity library
 - Test game is made for this library
 
-## Current Unity Settings
+### Current Unity Settings
 ![image](https://github.com/user-attachments/assets/f78cfd7d-f72e-4138-a018-2a37c12a43f6)
 
 This will need to be adjusted depending on your needs. Something to note is that MaxRollbackFrames isn't accurate, it's set to 4 which in IS is equivalent to ~8 RF. It works good enough, so I never bothered to fix it yet.
 
-## Credits
+### Credits
 This takes inspiration from the MK/Injustice GDC talk, Zinac's youtube rollback guide, GekkoNet's Rollback System.
 Also, this wouldn't be possible without RinIota, who built the original networking system, which helped as a foundation to build this new rollback system
 
