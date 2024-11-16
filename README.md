@@ -1,11 +1,11 @@
-# ISD Rollback
+# BestoNet
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg?style=flat)](docs/CONTRIBUTING.md)
 [![Maintenance](https://img.shields.io/badge/Maintained%3F-yes-green.svg)](https://github.com/bryanpaik/isd-rollback/graphs/commit-activity)
 [![Discord](https://img.shields.io/discord/YOUR_DISCORD_ID)](https://discord.gg/)
 
-ISD Rollback is a custom rollback networking solution developed for the fighting game [Idol Showdown](https://store.steampowered.com/app/1742020/Idol_Showdown/). Built in C# for Unity, it integrates with Facepunch Steamworks to provide a robust and efficient rollback implementation.
+BestoNet is a custom rollback networking solution developed for the fighting game [Idol Showdown](https://store.steampowered.com/app/1742020/Idol_Showdown/). Built in C# for Unity, it integrates with Facepunch Steamworks to provide a robust and efficient rollback implementation.
 
 ## 📚 Documentation
 
@@ -16,7 +16,7 @@ ISD Rollback is a custom rollback networking solution developed for the fighting
 
 ## Background
 
-We developed ISD Rollback to replace our initial Unity GGPO implementation, which faced several challenges:
+We developed BestoNet to replace our initial Unity GGPO implementation, which faced several challenges:
 - Unplayable connections at long distances (experiencing ~7 frames of rollback)
 - Maintenance difficulties due to GGPO's C++ codebase
 - System instability during poor network conditions
@@ -62,7 +62,7 @@ We developed ISD Rollback to replace our initial Unity GGPO implementation, whic
 # Using Unity Package Manager (UPM)
 {
   "dependencies": {
-    "com.bestogames.isd-rollback": "https://github.com/bryanpaik/isd-rollback.git"
+    "com.bestogames.bestonet": "https://github.com/bryanpaik/bestonet.git"
   }
 }
 ```
