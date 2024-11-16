@@ -1,6 +1,6 @@
-﻿# Contributing to ISD Rollback
+﻿# Contributing to BestoNet
 
-First off, thank you for considering contributing to ISD Rollback!
+First off, thank you for considering contributing to BestoNet!
 
 ## Code of Conduct
 
