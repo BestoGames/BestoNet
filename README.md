@@ -26,6 +26,12 @@ Originally we used Unity GGPO but there were some issues.
 6. No syncing system at the moment thats included, right now it just uses the first 10 frames to sync up the games
 Obviously there is alot more things you need to make a full fighting game, but this is how you would integrate this system
 
+### Planned Features
+- Frame lock system
+- Spectator Implementation
+- Integrated as a Unity library
+- Test game is made for this library
+
 ## Current Unity Settings
 ![image](https://github.com/user-attachments/assets/f78cfd7d-f72e-4138-a018-2a37c12a43f6)
 
