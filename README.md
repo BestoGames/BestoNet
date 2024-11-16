@@ -6,7 +6,7 @@
 
 BestoNet is a custom rollback networking solution developed for the fighting game [Idol Showdown](https://store.steampowered.com/app/1742020/Idol_Showdown/). Built in C# for Unity, it integrates with Facepunch Steamworks to provide a robust and efficient rollback implementation.
 
-This a work in progress as a library, and won't work right out the box
+This is a work in progress as a library, and won't work right out the box
 
 ## 📚 Documentation
 
@@ -33,21 +33,9 @@ Originally we used Unity GGPO but there were some issues.
 
 ## Implementation Requirements
 
-### Essential Components
-1. **Frame Timing System**
-    - Requires precise frame length control
-    - Current implementation in IS uses a separate thread for accurate timing
-
-2. **State Management**
-    - Save/Load state system
-    - Requires deterministic game logic
-    - Recommendation: Avoid using byte[] with BinaryWriter/Reader due to inefficiency
-
-### Additional Systems Needed
-- **Spectator System**: Framework prepared with confirm frame input buffer
-- **Desync Detection**: Requires custom implementation
-- **Demo Recording**: Suggested implementation through confirmed input recording
-- **Game Synchronization**: Currently uses first 10 frames for basic synchronization
+1. Frame Timing: Idol Showdown currently uses a separate thread as a timer.
+2. Spectator: The current implementation contains a call to send confirmed frame inputs to a spectator buffer
+3. State management system: Deterministic game logic is required. For efficiency reasons, we recommend avoiding using byte[] with BinaryWriter/Reader
 
 ## Configuration
 
