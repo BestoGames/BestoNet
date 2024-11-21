@@ -24,6 +24,12 @@ namespace BestoNet.Collections
     {
         private readonly int _size;
         private readonly T[] _data;
+        private int _count;
+
+        /// <summary>
+        /// Gets the number of elements currently stored in the circular array.
+        /// </summary>
+        public int Count => _count;
 
         /// <summary>
         /// Initializes a new instance of the CircularArray class with the specified size.
@@ -37,6 +43,7 @@ namespace BestoNet.Collections
 
             _size = size;
             _data = new T[size];
+            _count = 0;
         }
 
         /// <summary>
@@ -48,6 +55,10 @@ namespace BestoNet.Collections
         public virtual void Insert(int index, T value)
         {
             int modIndex = index % _size;
+            if (_data[modIndex] == null || _data[modIndex].Equals(default(T)))
+            {
+                _count = Math.Min(_count + 1, _size);
+            }
             _data[modIndex] = value;
         }
 
@@ -82,6 +93,7 @@ namespace BestoNet.Collections
         public void Clear()
         {
             Array.Clear(_data, 0, _data.Length);
+            _count = 0;
         }
     }
 }

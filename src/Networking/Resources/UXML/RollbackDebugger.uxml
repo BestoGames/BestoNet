@@ -1,0 +1,46 @@
+<UXML xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" editor-extension-mode="False">
+    <Style src="project://database/Assets/Scripts/Networking/Resources/USS/RollbackDebugger.uss?fileID=7433441132597879392&amp;guid=4c6e180b9327dbc49af8f7e20b5d990e&amp;type=3#RollbackDebugger" />
+    <ui:VisualElement name="RollbackDebugger" class="debug-container">
+        <ui:Label text="Rollback Network Debugger" class="header" />
+        <ui:VisualElement class="columns">
+            <ui:VisualElement class="column">
+                <ui:VisualElement class="stats-panel">
+                    <ui:Label name="ConnectionStatusLabel" text="Status: Disconnected" class="status-disconnected" />
+                    <ui:Label name="FpsLabel" text="FPS: --" />
+                    <ui:Label name="PingLabel" text="Ping: -- ms" />
+                    <ui:Label name="RollbackFramesLabel" text="Rollback Frames: 0" />
+                    <ui:Label name="MemoryLabel" text="Memory: -- MB" />
+                    <ui:Label name="FrameAdvantageLabel" text="Frame Advantage: 0" />
+                    <ui:Label name="MessageStatsLabel" text="Messages: 0 sent, 0 received, 0 dropped" />
+                    <ui:ProgressBar name="NetworkHealthBar" title="Network Health" low-value="0" high-value="100" value="100" />
+                </ui:VisualElement>
+                <ui:VisualElement class="controls-panel">
+                    <ui:VisualElement class="connection-controls">
+                        <ui:TextField name="AddressField" label="Address" value="127.0.0.1" />
+                        <ui:IntegerField name="PortField" label="Port" value="7777" />
+                        <ui:Button name="ConnectButton" text="Connect" />
+                        <ui:Button name="DisconnectButton" text="Disconnect" />
+                    </ui:VisualElement>
+                    <ui:VisualElement class="simulation-controls">
+                        <ui:SliderInt name="LatencySlider" label="Simulated Latency (ms)" low-value="0" high-value="500" value="0" />
+                        <ui:SliderInt name="PacketLossSlider" label="Simulated Packet Loss (%)" low-value="0" high-value="100" value="0" />
+                    </ui:VisualElement>
+                </ui:VisualElement>
+                <ui:ListView name="PlayerList" class="player-list" />
+            </ui:VisualElement>
+            <ui:VisualElement class="column">
+                <ui:VisualElement class="rollback-panel">
+                    <ui:Button name="ForceRollbackButton" text="Force Rollback" />
+                    <ui:Button name="ForceSyncButton" text="Force Sync Check" />
+                </ui:VisualElement>
+                <ui:ScrollView name="LogView" class="log-view" />
+                <ui:Button name="ClearLogButton" text="Clear Log" />
+            </ui:VisualElement>
+        </ui:VisualElement>
+        <ui:VisualElement class="button-container">
+            <ui:Button name="SimulateConnectButton" text="Simulate Connect" />
+            <ui:Button name="SimulateDisconnectButton" text="Simulate Disconnect" />
+            <ui:Button name="SimulateDesyncButton" text="Simulate Desync" />
+        </ui:VisualElement>
+    </ui:VisualElement>
+</UXML>
