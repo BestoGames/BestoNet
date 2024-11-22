@@ -1,4 +1,4 @@
-![BestoNet](assets/BESTO_NET.png)
+<img src="assets/bestoneto.png" width="300" />
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg?style=flat)](docs/CONTRIBUTING.md)

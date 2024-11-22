@@ -11,8 +11,10 @@ namespace IdolShowdown.Managers
         [SerializeField] public int MAX_RETRY_AMOUNT = 3;
         [SerializeField] public int MATCH_MESSAGE_CHANNEL = 4;
         public int Ping { get; private set; } = 200;
-        private const bool PACKET_ACK = true;
-        private const int INITIALIZATION_FRAME = -1;
+        private const byte PACKET_ACK = 0;
+        private const byte PACKET_REMOTE_ADV = 1;
+        private const byte PACKET_INPUT = 2;
+        private const int REMOTE_FRAME_UPDATE = -1;
         public CircularArray<float> sentFrameTimes = new CircularArray<float>(60);
 
         /* Global manager references */
@@ -51,14 +53,14 @@ namespace IdolShowdown.Managers
             MemoryStream memoryStream = new MemoryStream(message);
             BinaryReader reader = new BinaryReader(memoryStream);
 
-            bool isACK = reader.ReadBoolean();
-            if (isACK)
+            byte packetType = reader.ReadByte();
+            if (packetType == PACKET_ACK)
             {
                 int frame = reader.ReadInt32();
                 ProcessACK(frame);
                 
             }
-            else
+            else if(packetType == PACKET_INPUT)
             {
                 int remoteFrameAdvantage = reader.ReadInt32();  
                 int totalInputs = reader.ReadInt32();
@@ -75,6 +77,12 @@ namespace IdolShowdown.Managers
                 }             
                 
             }
+            else if(packetType == PACKET_REMOTE_ADV)
+            {
+                int remoteAdvantage = reader.ReadInt32();
+                int frame = reader.ReadInt32();
+                rollbackManager.SetRemoteFrameAdvantage(frame, remoteAdvantage);
+            }
             
             reader.Close();
             memoryStream.Close();
@@ -82,15 +90,11 @@ namespace IdolShowdown.Managers
 
         public void ProcessInputs(int frame, ulong input, ulong fromUser)
         {
-            if (rollbackManager.receivedInputs.ContainsKey(frame))
+            if (frame == REMOTE_FRAME_UPDATE || rollbackManager.receivedInputs.ContainsKey(frame))
             {
                 return;
             }
             SendMessageACK(fromUser, frame);
-            if (frame == INITIALIZATION_FRAME)
-            {
-                return;
-            } 
             rollbackManager.SetOpponentInput(frame, input);
         }
 
@@ -111,7 +115,7 @@ namespace IdolShowdown.Managers
             MemoryStream memoryStream = new MemoryStream();
             BinaryWriter binaryWriter = new BinaryWriter(memoryStream);
 
-            binaryWriter.Write(!PACKET_ACK);
+            binaryWriter.Write(PACKET_INPUT);
             binaryWriter.Write(rollbackManager.localFrameAdvantage);
             binaryWriter.Write(Math.Min(rollbackManager.MaxRollBackFrames, frame));
             for(int i = Math.Max(frame - rollbackManager.MaxRollBackFrames, 0); i <= frame; i++)
@@ -119,6 +123,29 @@ namespace IdolShowdown.Managers
                 binaryWriter.Write(rollbackManager.clientInputs.Get(i).frame);
                 binaryWriter.Write(rollbackManager.clientInputs.Get(i).input);
             }
+
+            byte[] data = memoryStream.ToArray();
+            SteamNetworking.SendP2PPacket(userid, data, data.Length, MATCH_MESSAGE_CHANNEL, P2PSend.UnreliableNoDelay);
+
+            binaryWriter?.Dispose();
+            binaryWriter?.Close();
+            memoryStream?.Dispose();
+            memoryStream?.Close();
+        }
+
+        public void SendLocalAdvantage(ulong userid)
+        {
+            if (GlobalManager.Instance.OnlineComponents.rematchHelper.IsActivated)
+            {
+                return;
+            }
+            MemoryStream memoryStream = new MemoryStream();
+            BinaryWriter binaryWriter = new BinaryWriter(memoryStream);
+
+            binaryWriter.Write(PACKET_REMOTE_ADV);
+            binaryWriter.Write(rollbackManager.localFrameAdvantage);
+            binaryWriter.Write(rollbackManager.localFrame);
+            
 
             byte[] data = memoryStream.ToArray();
             SteamNetworking.SendP2PPacket(userid, data, data.Length, MATCH_MESSAGE_CHANNEL, P2PSend.UnreliableNoDelay);
