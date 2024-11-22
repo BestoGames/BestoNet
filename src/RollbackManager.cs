@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using IdolShowdown.Match;
 using IdolShowdown.Networking;
 using IdolShowdown.Platforms;
@@ -47,6 +48,7 @@ namespace IdolShowdown.Managers
         public bool isRollbackFrame { get; private set; } = false;
         public bool physicsRollbackFrame { get; private set; } = false;
         private int lastDroppedFrame = -1;
+        private int lastExtendedFrame = -100;
         private PlatformUser client;
         private PlatformUser opponent;
         public FrameMetadataArray receivedInputs { get; private set; } = new FrameMetadataArray(InputArraySize);
@@ -248,6 +250,7 @@ namespace IdolShowdown.Managers
         public void ClearState(int frame)
         {
             states[frame % StateArraySize].frame = -1;
+            Array.Clear(states[frame % StateArraySize].state, 0, states[frame % StateArraySize].state.Length);
         }
 
         public void LoadState(int frame)
@@ -281,7 +284,7 @@ namespace IdolShowdown.Managers
 
         public void StartFrameExtensions(float frameAdvantageDiffereence)
         {
-            if (FPSLock.Instance.EnableRateLock == false)
+            if (FPSLock.Instance.EnableRateLock == false || localFrame - lastExtendedFrame < FrameAdvantageCheckSize)
             {
                 return;
             }
@@ -291,6 +294,7 @@ namespace IdolShowdown.Managers
                 Debug.Log(string.Format("Local frame {1}, Frame Advantage {0}", frameAdvantageDiffereence, localFrame));
                 FPSLock.Instance.SetFrameExtension(SleepTimeMicro);
                 totalConsecutiveFrameExtensions = 0;
+                lastExtendedFrame = localFrame;
             }
         }
 
@@ -302,6 +306,11 @@ namespace IdolShowdown.Managers
             if (localFrameAdvantage > MaxRollBackFrames && !isRollbackFrame)
             {
                 Debug.Log(string.Format("Local frame {4}, localFrameAdvantage {2}:{3}, Dropping frame", frameAdvantageDifference, FrameAdvantageLimit, localFrameAdvantage, MaxRollBackFrames, localFrame));
+                if (lastDroppedFrame == localFrame)
+                {
+                    matchManager.SendLocalAdvantage(opponent.userID);
+                }
+
                 lastDroppedFrame = localFrame;
                 return false;
             }
@@ -349,7 +358,7 @@ namespace IdolShowdown.Managers
                 frame = frame,
                 input = input
             });
-            remoteFrame = frame;
+            remoteFrame = Math.Max(frame, remoteFrame);
         }
 
         public void SetRemoteFrameAdvantage(int recFrame, int recAdvantage)
@@ -398,16 +407,39 @@ namespace IdolShowdown.Managers
         public void TriggerDesyncedStatus()
         {
             Disconnect();
-            
-            GlobalManager.Instance.MatchRunner.CurrentMatch.SaveDemoLogic(string.Format("Desync: {0} {1} V {2} {3}", GlobalManager.Instance.GameManager.GetPlayer(PlayerNumber.playerOne)?.charName, GlobalManager.Instance.GameManager.Collabs[0].charName, GlobalManager.Instance.GameManager.GetPlayer(PlayerNumber.playerTwo)?.charName, GlobalManager.Instance.GameManager.Collabs[1].charName, Application.version)); // Save the demo
             GlobalManager.Instance.LobbyManager.UpdateLastPlayerInfo();
-            TerminateMatch(Localization.Localization.GetLocalized("DISCONNECT_REASON_TIMEOUT"));
+            GlobalManager.Instance.MatchRunner.CurrentMatch.SaveDemoLogic(string.Format("{0} {1} V {2} {3}", GlobalManager.Instance.GameManager.GetPlayer(PlayerNumber.playerOne)?.charName, GlobalManager.Instance.GameManager.Collabs[0].charName, GlobalManager.Instance.GameManager.GetPlayer(PlayerNumber.playerTwo)?.charName, GlobalManager.Instance.GameManager.Collabs[1].charName, Application.version)); // Save the demo
+            TerminateMatch(Localization.Localization.GetLocalized("DISCONNECT_REASON_DESYNC"));
         }
 
         public void TriggerMatchTimeout()
         {
             Disconnect();
+            
+            GlobalManager.Instance.LobbyManager.UpdateLastPlayerInfo();
             TerminateMatch(Localization.Localization.GetLocalized("DISCONNECT_REASON_TIMEOUT"));
+        }
+
+        void TerminateMatch(string reason)
+        {
+            // If we are still connected to the lobby and it has same people then
+            if (GlobalManager.Instance.LobbyManager.CurrentLobby != null)
+            {
+                // Allow people to join again
+                if (GlobalManager.Instance.OnlineComponents.matchInfo.IsHost)
+                    GlobalManager.Instance.LobbyManager.CurrentLobby.SetJoinable(true);
+
+                GlobalManager.Instance.LobbyManager.ChangingSettings = true;
+                GlobalManager.Instance.OnlineComponents.matchInfo.IsRematchedSession = false;
+
+                // Go to lobby screen
+                GlobalManager.Instance.SceneManager.SwitchSceneToAsyncWithFade("LobbyScreen");
+            }
+
+            GlobalManager.Instance.GameStateManager.MatchStop(); // Stop the match
+            GlobalManager.Instance.UIManager.WaitingForOpponentUIRemove(); // Remove splashes
+            Debug.Log(reason);
+            GlobalManager.Instance.UIManager.MatchTerminationNotificationSummon(reason);
         }
 
         public void Disconnect()

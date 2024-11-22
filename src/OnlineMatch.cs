@@ -40,7 +40,6 @@ namespace IdolShowdown.Match
             {
                 GlobalManager.Instance.RollbackManager.Init();
             }
-
         }
 
         // Get called when match is killed/closed.
@@ -82,7 +81,7 @@ namespace IdolShowdown.Match
                     started = true;
                 }
                 
-                if (FrameNumber == 0)
+                if (FrameNumber <= rollbackManager.InputDelay)
                 {
                     GlobalManager.Instance.RollbackManager.SaveState();
                 }
@@ -192,11 +191,14 @@ namespace IdolShowdown.Match
 
         public void AddSpectatorFrames()
         {
-            if (isPlayer1Local && frameNumber > rollbackManager.SpectatorDelayInFrames)
+            if (isPlayer1Local)
             {
                 // Save last inputs
                 int frameDelay = frameNumber - rollbackManager.SpectatorDelayInFrames;
-                spectatorLogic.P1AddToBuffer(new ulong [2]{rollbackManager.clientInputs.Get(frameDelay).input, rollbackManager.receivedInputs.Get(frameDelay).input}, frameDelay);
+                if(frameDelay > 0 && rollbackManager.receivedInputs.ContainsKey(frameDelay) && rollbackManager.clientInputs.ContainsKey(frameDelay))
+                {
+                    spectatorLogic.P1AddToBuffer(new ulong[]{rollbackManager.clientInputs.Get(frameDelay).input, rollbackManager.receivedInputs.Get(frameDelay).input}, frameDelay);
+                }
             }
         }
 
