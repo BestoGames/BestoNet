@@ -1,0 +1,20 @@
+{
+  "name": "com.bestogames.bestonet",
+  "version": "0.0.1",
+  "displayName": "BestoNet",
+  "description": "Deterministic Rollback Networking Library",
+  "unity": "6000.0",
+  "dependencies": {
+    "com.unity.inputsystem": "1.11.2"
+  },
+  "keywords": [
+    "networking",
+    "rollback",
+    "deterministic",
+    "multiplayer"
+  ],
+  "author": {
+    "name": "BestoGames",
+    "url": "https://github.com/BestoGames"
+  }
+}

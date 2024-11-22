@@ -74,3 +74,8 @@ bld/
 *.snupkg
 **/[Pp]ackages/*
 !**/[Pp]ackages/build/
+
+# DocFX
+_site/
+api/
+obj/
