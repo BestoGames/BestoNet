@@ -71,7 +71,7 @@ namespace BestoNetSamples.BestoNet
 
         public bool IsP2PPacketAvailable()
         {
-            return _packetQueue.Length > 0;
+            return _packetQueue.Count > 0;
         }
 
         public byte[] ReadP2PPacket()
