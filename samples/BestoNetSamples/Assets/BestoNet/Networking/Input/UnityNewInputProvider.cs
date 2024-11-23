@@ -1,9 +1,10 @@
+using System.Collections.Generic;
+using BestoNet.Networking.Input;
+using BestoNet.Networking.Interfaces;
 using UnityEngine;
 using UnityEngine.InputSystem;
-using System.Collections.Generic;
-using BestoNet.Networking.Interfaces;
 
-namespace BestoNet.Networking.Input
+namespace BestoNetSamples.BestoNet.Networking.Input
 {
     public class UnityNewInputProvider : MonoBehaviour, IInputProvider
     {
@@ -71,9 +72,10 @@ namespace BestoNet.Networking.Input
                 {
                     action.started += ctx => HandleInput(action.name, true);
                     action.canceled += ctx => HandleInput(action.name, false);
+                    UnityEngine.Debug.Log(action.name);
                 }
             }
-            _isInitialized = true;
+            _isInitialized = true;   
         }
 
         private void HandleInput(string actionName, bool value)

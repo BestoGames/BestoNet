@@ -32,6 +32,8 @@ namespace BestoNetSamples.BestoNet
             
             _receiveThread = new Thread(ReceiveMessage);
             _receiveThread.Start();
+            _receiveThread.IsBackground = true; 
+            
             _connected = true;
             
             portip.text = remoteAddress + " : " + localPort;

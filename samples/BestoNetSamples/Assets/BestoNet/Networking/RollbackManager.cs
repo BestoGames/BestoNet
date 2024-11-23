@@ -4,6 +4,7 @@ using BestoNet.Networking.Input;
 using BestoNet.Networking.State;
 using BestoNet.Networking.Structs;
 using BestoNet.Types;
+using BestoNetSamples.BestoNet.Networking.Input;
 using UnityEngine;
 
 namespace BestoNet.Networking

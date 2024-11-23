@@ -1,4 +1,5 @@
 using BestoNet.Networking.Input;
+using BestoNetSamples.BestoNet.Networking.Input;
 using UnityEngine;
 
 namespace BestoNet.Networking.Examples
