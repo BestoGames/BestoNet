@@ -69,12 +69,6 @@ bld/
 [Ll]og/
 [Ll]ogs/
 
-# NuGet Packages
-*.nupkg
-*.snupkg
-**/[Pp]ackages/*
-!**/[Pp]ackages/build/
-
 # DocFX
 _site/
 api/
