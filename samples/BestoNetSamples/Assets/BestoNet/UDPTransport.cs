@@ -3,6 +3,7 @@ using System.Net;
 using System.Net.Sockets;
 using System.Text;
 using System.Threading;
+using System.Threading.Tasks;
 using TMPro;
 using UnityEngine;
 
@@ -12,7 +13,10 @@ namespace BestoNetSamples.BestoNet
     {
         private UdpClient _client;
         private IPEndPoint _remoteEndPoint;
-        private CancellationTokenSource _cancellationToken;
+        private Thread _receiveThread;
+        private Queue<byte[]> _packetQueue = new Queue<byte[]>();
+        private bool _connected;
+        public event Action<byte[]> OnPacketReceived;
 
         [SerializeField] private string remoteAddress = "127.0.0.1";
         [SerializeField] private int localPort = 7777;
@@ -25,12 +29,34 @@ namespace BestoNetSamples.BestoNet
             _remoteEndPoint = new IPEndPoint(IPAddress.Parse(remoteAddress), remotePort);
             _client = new UdpClient(localPort);
             
+            _receiveThread = new Thread(ReceiveMessage);
+            _receiveThread.Start();
+            _connected = true;
+            
             portip.text = remoteAddress + " : " + localPort;
         }
-        
-        public void SendMessage()
+
+        private void Update()
         {
-            byte[] message = Encoding.UTF8.GetBytes("Hello World");
+            if(IsP2PPacketAvailable())
+            {
+                byte[] message = ReadP2PPacket();
+                UnityEngine.Debug.Log(Encoding.UTF8.GetString(message));
+            }
+        }
+
+        private void OnDestroy()
+        {
+            _receiveThread.Abort();
+        }
+
+        public void SendStringMessage(string message)
+        {
+            SendMessage(Encoding.UTF8.GetBytes(message));
+        }
+        
+        public void SendMessage(byte[] message)
+        {
             try
             {
                 _client.Send(message, message.Length, _remoteEndPoint);
@@ -42,16 +68,29 @@ namespace BestoNetSamples.BestoNet
             }
         }
 
+        public bool IsP2PPacketAvailable()
+        {
+            return _packetQueue.Length > 0;
+        }
+
+        public byte[] ReadP2PPacket()
+        {
+            return _packetQueue.Dequeue();
+        }
+
         public void ReceiveMessage()
         {
-            try
+            while (_connected)
             {
-                string message = Encoding.UTF8.GetString(_client.Receive(ref _remoteEndPoint));
-                UnityEngine.Debug.Log($"Received message: {message}");
-            }
-            catch (SocketException e)
-            {
-                UnityEngine.Debug.LogError($"Socket error: {e.Message}");
+                try
+                {
+                    byte[] message = _client.Receive(ref _remoteEndPoint);
+                    _packetQueue.Enqueue(message);
+                }
+                catch (SocketException e)
+                {
+                    UnityEngine.Debug.LogError($"Socket error: {e.Message}");
+                }
             }
         }
     }
