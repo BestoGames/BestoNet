@@ -1,0 +1,8 @@
+<UXML xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" editor-extension-mode="False">
+    <Style src="project://database/Assets/Resources/USS/MainMenu.uss?fileID=7433441132597879392&amp;guid=b280e1315bbd55b4a9f54fe1c03d3780&amp;type=3#MainMenu" />
+    <ui:VisualElement class="container">
+        <ui:Button name="host-button" text="Host Game" class="button" />
+        <ui:Button name="join-button" text="Join Game" class="button" />
+        <ui:Label name="notification" class="notification" />
+    </ui:VisualElement>
+</UXML>

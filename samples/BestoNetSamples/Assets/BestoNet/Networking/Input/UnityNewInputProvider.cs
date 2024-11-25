@@ -1,12 +1,13 @@
 using System.Collections.Generic;
 using BestoNet.Networking.Input;
 using BestoNet.Networking.Interfaces;
+using BestoNetSamples.Singleton;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
 namespace BestoNetSamples.BestoNet.Networking.Input
 {
-    public class UnityNewInputProvider : MonoBehaviour, IInputProvider
+    public class UnityNewInputProvider : SingletonBehaviour<UnityNewInputProvider>, IInputProvider
     {
         [SerializeField] private InputActionAsset actionAsset;
         [SerializeField] private int historyFrames = 100;
@@ -27,11 +28,12 @@ namespace BestoNetSamples.BestoNet.Networking.Input
         private ulong _currentFrameInput;
         private bool _isInitialized;
 
-        private void Awake()
+        protected override void OnAwake()
         {
+            base.OnAwake();
             Initialize();
         }
-        
+
         private void Update()
         {
             History.RecordInput(_currentFrameInput, Time.frameCount);
@@ -72,7 +74,6 @@ namespace BestoNetSamples.BestoNet.Networking.Input
                 {
                     action.started += ctx => HandleInput(action.name, true);
                     action.canceled += ctx => HandleInput(action.name, false);
-                    UnityEngine.Debug.Log(action.name);
                 }
             }
             _isInitialized = true;   
