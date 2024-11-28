@@ -4,7 +4,6 @@ using IdolShowdown.Match;
 using IdolShowdown.Networking;
 using IdolShowdown.Platforms;
 using UnityEngine;
-using UnityGGPO;
 
 namespace IdolShowdown.Managers
 {
@@ -63,6 +62,7 @@ namespace IdolShowdown.Managers
         public int syncFrame { get; private set; } = 0;
         public int localFrameAdvantage {get; private set;} = 0;
         public int localFrame => matchRunner.FrameNumber;
+        private int timeoutCounter = 0;
         public void Init()
         {
             UnityEngine.Debug.Log("Initializing OnlineMatch connection");
@@ -88,6 +88,7 @@ namespace IdolShowdown.Managers
             remoteFrame = 0;
             syncFrame = 0;
             opponentLastAppliedInput = 0;
+            timeoutCounter = 0;
             totalConsecutiveFrameExtensions = FrameExtensionWindow;
             matchManager.sentFrameTimes.Clear();
 
@@ -191,14 +192,25 @@ namespace IdolShowdown.Managers
         {
             /* Check if we have input for the next frame */
             int frame = matchRunner.FrameNumber;
+            if (timeoutCounter > TimeoutFrames)
+            {
+                TriggerMatchTimeout();
+            }
+            if (localFrameAdvantage > MaxRollBackFrames && !isRollbackFrame)
+            {
+                Debug.Log(string.Format("Local frame {2}, localFrameAdvantage {0}:{1}, Dropping frame", localFrameAdvantage, MaxRollBackFrames, localFrame));
+                lastDroppedFrame = localFrame;
+                timeoutCounter++;
+                return false;
+            }
             if (!receivedInputs.ContainsKey(frame))
             {
                 if (DelayBased || frame < 10)
                 {
                     return false;
                 }
-            } 
-
+            }
+            timeoutCounter = 0;
             return true;
         }
         public ulong[] SynchronizeInput()
@@ -239,7 +251,7 @@ namespace IdolShowdown.Managers
         public void SaveState()
         {
             byte[] gameState = GlobalManager.Instance.OnStageObjects.ToBytes();
-            int checksum = Utils.CalcFletcher32(gameState);
+            int checksum = 0;
             states[localFrame % StateArraySize] = new GameState(){
                 frame = localFrame,
                 state = gameState
@@ -282,7 +294,7 @@ namespace IdolShowdown.Managers
             }
         }
 
-        public void StartFrameExtensions(float frameAdvantageDiffereence)
+        public void StartFrameExtensions(float frameAdvantageDifference)
         {
             if (FPSLock.Instance.EnableRateLock == false || localFrame - lastExtendedFrame < FrameAdvantageCheckSize)
             {
@@ -291,7 +303,7 @@ namespace IdolShowdown.Managers
 
             if (totalConsecutiveFrameExtensions == FrameExtensionWindow)
             {
-                Debug.Log(string.Format("Local frame {1}, Frame Advantage {0}", frameAdvantageDiffereence, localFrame));
+                Debug.Log(string.Format("Local frame {1}, Frame Advantage {0}", frameAdvantageDifference, localFrame));
                 FPSLock.Instance.SetFrameExtension(SleepTimeMicro);
                 totalConsecutiveFrameExtensions = 0;
                 lastExtendedFrame = localFrame;
@@ -303,17 +315,6 @@ namespace IdolShowdown.Managers
             localFrameAdvantage = localFrame - remoteFrame;
             SetLocalFrameAdvantage(localFrameAdvantage);
             frameAdvantageDifference = GetAverageFrameAdvantage();
-            if (localFrameAdvantage > MaxRollBackFrames && !isRollbackFrame)
-            {
-                Debug.Log(string.Format("Local frame {4}, localFrameAdvantage {2}:{3}, Dropping frame", frameAdvantageDifference, FrameAdvantageLimit, localFrameAdvantage, MaxRollBackFrames, localFrame));
-                if (lastDroppedFrame == localFrame)
-                {
-                    matchManager.SendLocalAdvantage(opponent.userID);
-                }
-
-                lastDroppedFrame = localFrame;
-                return false;
-            }
 
             if (localFrame == lastDroppedFrame)
             {
@@ -322,8 +323,8 @@ namespace IdolShowdown.Managers
 
             if (frameAdvantageDifference > FrameAdvantageLimit && !isRollbackFrame)
             {
-                Debug.Log(string.Format("Local frame {4}, Frame Difference {0}:{1}, Dropping frame", frameAdvantageDifference, FrameAdvantageLimit, localFrameAdvantage, MaxRollBackFrames, localFrame));
                 lastDroppedFrame = localFrame;
+                Debug.Log(string.Format("Local frame {4}, Frame Difference {0}:{1}, Dropping frame", frameAdvantageDifference, FrameAdvantageLimit, localFrameAdvantage, MaxRollBackFrames, localFrame));
                 return false;
             }
             return true;
@@ -358,7 +359,6 @@ namespace IdolShowdown.Managers
                 frame = frame,
                 input = input
             });
-            remoteFrame = Math.Max(frame, remoteFrame);
         }
 
         public void SetRemoteFrameAdvantage(int recFrame, int recAdvantage)
@@ -369,6 +369,11 @@ namespace IdolShowdown.Managers
         public void SetLocalFrameAdvantage(int advantage)
         {
             localFrameAdvantages.Insert(localFrame, advantage);
+        }
+
+        public void SetRemoteFrame(int frame)
+        {
+            remoteFrame = Math.Max(frame, remoteFrame);;
         }
 
         public float GetAverageFrameAdvantage()

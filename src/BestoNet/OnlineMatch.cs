@@ -1,11 +1,12 @@
 ﻿/*
-*  Author: Iota
+*  Author: IotaBoyBad (Rinat Satybaldinov)
 *  Class Description: Match logic during Online
 */
 
 using IdolShowdown.Managers;
 using IdolShowdown.Platforms;
 using IdolShowdown.Networking;
+using System.Diagnostics;
 
 namespace IdolShowdown.Match
 {
@@ -20,7 +21,6 @@ namespace IdolShowdown.Match
         private RollbackManager rollbackManager => GlobalManager.Instance.RollbackManager;
         private bool isPlayer1Local = false;
         private ISSpectator spectatorLogic;
-        private int timeoutFrames = 0;
 
         public override void InitMatch()
         {
@@ -89,7 +89,9 @@ namespace IdolShowdown.Match
                 localPlayerInput = 0;
                 // Clear input when game is paused 
                 if (IsPaused == false && charComponents[localPlayerIndex].StateManager.InCountdownPause == false)
+                {
                     localPlayerInput = charComponents[localPlayerIndex].Input.ReadInput();
+                }
 
                 syncedInput[0] = 0;
                 syncedInput[1] = 0;
@@ -97,12 +99,11 @@ namespace IdolShowdown.Match
                 bool TimeSynced = rollbackManager.CheckTimeSync(out float frameAdvantageDifference);
                 if (TimeSynced)
                 {
-                    timeoutFrames = 0;
                     rollbackManager.RollbackEvent();
 
                     // Save frame 0
                     if (isPlayer1Local && frameNumber <= GlobalManager.Instance.RollbackManager.InputDelay)
-                        spectatorLogic.P1AddToBuffer(syncedInput, frameNumber);
+                        spectatorLogic.AddToConfirmFrames(syncedInput, frameNumber);
 
 
                     TimeUpdate();
@@ -123,7 +124,7 @@ namespace IdolShowdown.Match
                     rollbackManager.DesyncCheck();
                     
 
-                    if (isPlayer1Local && frameNumber % 60 == 0)
+                    if (isPlayer1Local)
                     {
                         GlobalManager.Instance.LobbyManager.SpectatorLogic.SpectatorP1Update();
                     } 
@@ -135,15 +136,6 @@ namespace IdolShowdown.Match
                     
                     rollbackManager.ExtendFrame();
                     
-                }
-                else
-                {
-                    timeoutFrames++;
-                    if (timeoutFrames > rollbackManager.TimeoutFrames)
-                    {
-                        rollbackManager.TriggerMatchTimeout();
-                    }
-
                 }
             }
         }
@@ -197,7 +189,7 @@ namespace IdolShowdown.Match
                 int frameDelay = frameNumber - rollbackManager.SpectatorDelayInFrames;
                 if(frameDelay > 0 && rollbackManager.receivedInputs.ContainsKey(frameDelay) && rollbackManager.clientInputs.ContainsKey(frameDelay))
                 {
-                    spectatorLogic.P1AddToBuffer(new ulong[]{rollbackManager.clientInputs.Get(frameDelay).input, rollbackManager.receivedInputs.Get(frameDelay).input}, frameDelay);
+                    spectatorLogic.AddToConfirmFrames(new ulong[]{rollbackManager.clientInputs.Get(frameDelay).input, rollbackManager.receivedInputs.Get(frameDelay).input}, frameDelay);
                 }
             }
         }
