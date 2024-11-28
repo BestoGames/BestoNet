@@ -12,37 +12,17 @@ namespace BestoNet.Types
         
         /// <summary>The input state for this frame.</summary>
         public readonly ulong Input;
-        
-        /// <summary>Timestamp when this frame was created (in milliseconds since startup).</summary>
-        public readonly long Timestamp;
-        
-        /// <summary>CRC32 hash of the game state at this frame, used for verification.</summary>
-        public readonly uint StateHash;
-        
-        /// <summary>Player ID who generated this input.</summary>
-        public readonly byte PlayerIndex;
-        
-        /// <summary>Whether this frame has been confirmed by all players.</summary>
-        public readonly bool Confirmed;
 
-        public FrameMetadata(int frame, ulong input, long timestamp, uint stateHash, byte playerIndex, bool confirmed = false)
+        public FrameMetadata(int frame, ulong input)
         {
             Frame = frame;
             Input = input;
-            Timestamp = timestamp;
-            StateHash = stateHash;
-            PlayerIndex = playerIndex;
-            Confirmed = confirmed;
         }
 
         public bool Equals(FrameMetadata other)
         {
             return Frame == other.Frame &&
-                   Input == other.Input &&
-                   Timestamp == other.Timestamp &&
-                   StateHash == other.StateHash &&
-                   PlayerIndex == other.PlayerIndex &&
-                   Confirmed == other.Confirmed;
+                   Input == other.Input;
         }
 
         public override bool Equals(object obj)
@@ -55,10 +35,6 @@ namespace BestoNet.Types
             HashCode hash = new();
             hash.Add(Frame);
             hash.Add(Input);
-            hash.Add(Timestamp);
-            hash.Add(StateHash);
-            hash.Add(PlayerIndex);
-            hash.Add(Confirmed);
             return hash.ToHashCode();
         }
 
@@ -74,7 +50,7 @@ namespace BestoNet.Types
 
         public override string ToString()
         {
-            return $"Frame {Frame} (Player {PlayerIndex}): Input={Input:X}, Hash={StateHash:X8}, Time={Timestamp}ms, {(Confirmed ? "Confirmed" : "Pending")}";
+            return $"Frame {Frame} : Input {Input}";
         }
     }
 }
