@@ -38,24 +38,9 @@ namespace BestoNet.Collections
             return 0;
         }
 
-        public uint GetStateHash(int frame)
-        {
-            if (ContainsKey(frame))
-            {
-                return Get(frame).StateHash;
-            }
-            Debug.LogWarning($"Missing state hash for frame {frame}, latest frame is {_latestInsertedFrame}");
-            return 0;
-        }
-
         public int GetLatestFrame()
         {
             return _latestInsertedFrame;
-        }
-
-        public bool IsFrameConfirmed(int frame)
-        {
-            return ContainsKey(frame) && Get(frame).Confirmed;
         }
     }
 }

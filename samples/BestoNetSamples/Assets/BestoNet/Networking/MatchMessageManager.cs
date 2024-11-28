@@ -1,12 +1,13 @@
 using System;
 using System.IO;
-using Steamworks;
-using Steamworks.Data;
+using BestoNet.Collections;
+using BestoNetSamples.BestoNet.Networking;
+using BestoNetSamples.Singleton;
 using UnityEngine;
 
-namespace IdolShowdown.Managers
+namespace BestoNetSamples
 {
-    public class MatchMessageManager : MonoBehaviour
+    public class MatchMessageManager : SingletonBehaviour<MatchMessageManager>
     {
         [SerializeField] public int MAX_RETRY_AMOUNT = 3;
         [SerializeField] public int MATCH_MESSAGE_CHANNEL = 4;
@@ -17,38 +18,23 @@ namespace IdolShowdown.Managers
         public CircularArray<float> sentFrameTimes = new CircularArray<float>(60);
 
         /* Global manager references */
-        private RollbackManager rollbackManager => GlobalManager.Instance.RollbackManager;
-        private LobbyManager lobbyManager => GlobalManager.Instance.LobbyManager;
+        private RollbackManager rollbackManager => RollbackManager.Instance;
 
-        void Update()
+        private void OnAwake()
         {
-            if (lobbyManager != null && lobbyManager.CurrentLobby != null && lobbyManager.LobbyMemberMe.userRank != PlayerLobbyType.spectator)
+            NetworkManager.Instance.OnPacketReceived += OnChatMessage;
+        }
+
+        private void OnDestroy()
+        {
+            if (NetworkManager.Instance != null)
             {
-                while (SteamNetworking.IsP2PPacketAvailable(MATCH_MESSAGE_CHANNEL))
-                {
-                    P2Packet? lastPacket = SteamNetworking.ReadP2PPacket(MATCH_MESSAGE_CHANNEL);
-                    if (lastPacket.HasValue && lastPacket.Value.Data != null)
-                    {
-                        try
-                        {
-                            OnChatMessage(lastPacket.Value.SteamId.Value, lastPacket.Value.Data);
-                        }
-                        catch (System.Exception e)
-                        {
-                            UnityEngine.Debug.LogError(e);
-                        }
-                    }
-                }
+                NetworkManager.Instance.OnPacketReceived -= OnChatMessage;
             }
         }
 
-        private void OnChatMessage(ulong fromUser, byte[] message)
+        private void OnChatMessage(byte[] message)
         {
-            if (GlobalManager.Instance.OnlineComponents.rematchHelper.IsActivated)
-            {
-                return;
-            }
-
             MemoryStream memoryStream = new MemoryStream(message);
             BinaryReader reader = new BinaryReader(memoryStream);
 
@@ -71,7 +57,7 @@ namespace IdolShowdown.Managers
                         rollbackManager.SetRemoteFrameAdvantage(frame, remoteFrameAdvantage);
                         rollbackManager.SetRemoteFrame(frame);
                     }
-                    ProcessInputs(frame, input, fromUser);
+                    ProcessInputs(frame, input);
                     
                 }             
             }
@@ -80,13 +66,13 @@ namespace IdolShowdown.Managers
             memoryStream.Close();
         }
 
-        public void ProcessInputs(int frame, ulong input, ulong fromUser)
+        public void ProcessInputs(int frame, ulong input)
         {
             if (frame == REMOTE_FRAME_UPDATE || rollbackManager.receivedInputs.ContainsKey(frame))
             {
                 return;
             }
-            SendMessageACK(fromUser, frame);
+            SendMessageACK(frame);
             rollbackManager.SetOpponentInput(frame, input);
         }
 
@@ -96,13 +82,8 @@ namespace IdolShowdown.Managers
             Ping = CalculatePing == 0 ? Ping : CalculatePing;
         }
 
-        public void SendInputs(ulong userid, int frame, ulong input)
+        public void SendInputs(int frame, ulong input)
         {
-            if (GlobalManager.Instance.OnlineComponents.rematchHelper.IsActivated)
-            {
-                return;
-            }
-
             if (!rollbackManager.clientInputs.ContainsKey(frame))
             {
                 rollbackManager.SetClientInput(frame, input);
@@ -117,12 +98,12 @@ namespace IdolShowdown.Managers
             binaryWriter.Write(Math.Min(rollbackManager.MaxRollBackFrames, frame));
             for(int i = Math.Max(frame - rollbackManager.MaxRollBackFrames, 0); i <= frame; i++)
             {
-                binaryWriter.Write(rollbackManager.clientInputs.Get(i).frame);
-                binaryWriter.Write(rollbackManager.clientInputs.Get(i).input);
+                binaryWriter.Write(rollbackManager.clientInputs.Get(i).Frame);
+                binaryWriter.Write(rollbackManager.clientInputs.Get(i).Input);
             }
 
             byte[] data = memoryStream.ToArray();
-            SteamNetworking.SendP2PPacket(userid, data, data.Length, MATCH_MESSAGE_CHANNEL, P2PSend.UnreliableNoDelay);
+            NetworkManager.Instance.SendData(data);
 
             binaryWriter?.Dispose();
             binaryWriter?.Close();
@@ -130,13 +111,8 @@ namespace IdolShowdown.Managers
             memoryStream?.Close();
         }
 
-        public void SendMessageACK(ulong userid, int frame)
+        public void SendMessageACK(int frame)
         {
-            if (GlobalManager.Instance.OnlineComponents.rematchHelper.IsActivated)
-            {
-                return;
-            }
-
             MemoryStream memoryStream = new MemoryStream();
             BinaryWriter binaryWriter = new BinaryWriter(memoryStream);
 
@@ -144,7 +120,7 @@ namespace IdolShowdown.Managers
             binaryWriter.Write(frame);
 
             byte[] data = memoryStream.ToArray();
-            SteamNetworking.SendP2PPacket(userid, data, data.Length, MATCH_MESSAGE_CHANNEL, P2PSend.UnreliableNoDelay);
+            NetworkManager.Instance.SendData(data);
 
             binaryWriter?.Dispose();
             binaryWriter?.Close();

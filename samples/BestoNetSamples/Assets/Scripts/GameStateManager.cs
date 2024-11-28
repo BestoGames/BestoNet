@@ -13,6 +13,7 @@ namespace BestoNetSamples
     {
         [SerializeField] private string gameSceneName = "OldSystem";
         [SerializeField] private string mainMenuSceneName = "MainMenu";
+        public int FrameNumber = 0;
 
         private Coroutine _positionUpdateCoroutine;
         private bool _isReturningToMenu;
