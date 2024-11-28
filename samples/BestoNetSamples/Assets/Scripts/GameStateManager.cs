@@ -29,7 +29,6 @@ namespace BestoNetSamples
             SceneManager.LoadScene(mainMenuSceneName);
             SceneManager.sceneLoaded += OnSceneLoaded;
             
-            // Set up network message handling
             NetworkManager.Instance.OnPacketReceived += HandleNetworkMessage;
             NetworkManager.Instance.OnConnectionStateChanged += HandleConnectionStateChanged;
             NetworkManager.Instance.OnConnectionFailed += HandleConnectionFailed;
@@ -49,7 +48,6 @@ namespace BestoNetSamples
             }
             else if (scene.name == gameSceneName && IsGameStarted)
             {
-                // Initialize the game after scene is loaded
                 StartCoroutine(InitializeGameAfterSceneLoad());
             }
         }
@@ -58,9 +56,10 @@ namespace BestoNetSamples
         {
             // Wait for scene to be fully loaded
             yield return WaitInstructionCache.EndOfFrame();
+            yield return WaitInstructionCache.Seconds(0.2f); // Add small delay to ensure everything is ready
 
-            UnityEngine.Debug.Log($"Initializing game. IsHost: {NetworkManager.Instance.IsHost}, HasJoinedPlayer: {HasJoinedPlayer}, PlayerId: {_pendingPlayerId}");
-            
+            Debug.Log($"Initializing game. IsHost: {NetworkManager.Instance.IsHost}, HasJoinedPlayer: {HasJoinedPlayer}, PlayerId: {_pendingPlayerId}");
+    
             // Initialize and spawn local player
             PlayerManager.Instance.Initialize(_pendingPlayerId);
 
@@ -76,7 +75,6 @@ namespace BestoNetSamples
             {
                 PlayerManager.Instance.SpawnRemotePlayer(1);
             }
-
             StartPositionUpdates();
         }
 
@@ -87,7 +85,6 @@ namespace BestoNetSamples
                 ShowNotification("A game is already in progress");
                 return;
             }
-
             NetworkManager.Instance.StartHost();
             _pendingPlayerId = 1; // Set pending ID for host
             StartGame();
@@ -100,7 +97,6 @@ namespace BestoNetSamples
                 ShowNotification("Already in a game");
                 return;
             }
-
             NetworkManager.Instance.StartClient();
             _pendingPlayerId = 2; // Set pending ID for client
             ShowNotification("Attempting to join game...");
@@ -108,6 +104,8 @@ namespace BestoNetSamples
 
         private void StartGame()
         {
+            if (IsGameStarted) return; // Prevent multiple starts
+    
             IsGameStarted = true;
             SceneManager.LoadScene(gameSceneName);
         }
@@ -123,16 +121,27 @@ namespace BestoNetSamples
 
         private IEnumerator SendPositionUpdates()
         {
+            // Add initial delay to ensure game is properly initialized
+            yield return WaitInstructionCache.Seconds(0.5f);
+
             while (IsGameStarted)
             {
-                PlayerController localPlayer = PlayerManager.Instance.GetLocalPlayer();
-                if (localPlayer != null)
+                // Only send updates if:
+                // 1. We're the host with a joined player
+                // 2. We're a client and fully connected
+                bool shouldSendUpdates = (NetworkManager.Instance.IsHost && HasJoinedPlayer) || 
+                                         (!NetworkManager.Instance.IsHost && NetworkManager.Instance.IsConnected);
+                               
+                if (shouldSendUpdates)
                 {
-                    Vector3 position = localPlayer.GetPosition();
-                    Quaternion rotation = localPlayer.GetRotation();
-                    
-                    string updateMsg = $"POS:{position.x},{position.y},{position.z}:{rotation.x},{rotation.y},{rotation.z},{rotation.w}";
-                    NetworkManager.Instance.SendMessage(updateMsg);
+                    PlayerController localPlayer = PlayerManager.Instance.GetLocalPlayer();
+                    if (localPlayer != null)
+                    {
+                        Vector3 position = localPlayer.GetPosition();
+                        Quaternion rotation = localPlayer.GetRotation();
+                        string updateMsg = $"POS:{position.x},{position.y},{position.z}:{rotation.x},{rotation.y},{rotation.z},{rotation.w}";
+                        NetworkManager.Instance.SendNetworkMessage(updateMsg);
+                    }
                 }
                 yield return WaitInstructionCache.Seconds(0.05f); // 20 updates per second
             }
@@ -143,32 +152,43 @@ namespace BestoNetSamples
             string message = System.Text.Encoding.UTF8.GetString(data);
             if (message.StartsWith("POS:"))
             {
-                HandlePositionUpdate(message);
+                // Only handle position updates if we're fully connected and in game
+                if (IsGameStarted && NetworkManager.Instance.IsConnected)
+                {
+                    HandlePositionUpdate(message);
+                }
                 return;
             }
+    
             switch (message)
             {
-                case "HOST_READY":
-                    if (!NetworkManager.Instance.IsHost)
-                    {
-                        StartGame();
-                    }
-                    break;
-            
                 case "JOIN_REQUEST":
                     if (NetworkManager.Instance.IsHost)
                     {
                         if (!HasJoinedPlayer)
                         {
                             HasJoinedPlayer = true;
-                            NetworkManager.Instance.SendMessage("HOST_READY");
-                            ShowNotification("Player 2 has joined!");
+                            NetworkManager.Instance.SendNetworkMessage("JOIN_ACCEPTED");
+
                             PlayerManager.Instance.SpawnRemotePlayer(2);
+                            ShowNotification("Player 2 has joined!");
                         }
-                        else
-                        {
-                            NetworkManager.Instance.SendMessage("GAME_FULL");
-                        }
+                    }
+                    break;
+            
+                case "JOIN_ACCEPTED":
+                    if (!NetworkManager.Instance.IsHost && !IsGameStarted)
+                    {
+                        StartGame();
+                        ShowNotification("Successfully joined game!");
+                    }
+                    break;
+            
+                case "GAME_FULL":
+                    if (!NetworkManager.Instance.IsHost)
+                    {
+                        ShowNotification("Game is full!");
+                        ReturnToMainMenu();
                     }
                     break;
             
@@ -188,7 +208,7 @@ namespace BestoNetSamples
                     break;
             }
         }
-
+        
         private static void HandlePositionUpdate(string message)
         {
             string[] sections = message[4..].Split(':');
@@ -217,7 +237,12 @@ namespace BestoNetSamples
 
         private void HandleConnectionStateChanged(bool connected)
         {
-            if (!connected && !_isReturningToMenu)
+            if (connected && !NetworkManager.Instance.IsHost)
+            {
+                // Send join request when connection is established for client
+                NetworkManager.Instance.SendNetworkMessage("JOIN_REQUEST");
+            }
+            else if (!connected && !_isReturningToMenu)
             {
                 ReturnToMainMenu();
             }

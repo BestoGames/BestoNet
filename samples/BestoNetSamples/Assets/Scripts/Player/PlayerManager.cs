@@ -84,7 +84,7 @@ namespace BestoNetSamples.Player
             }
             SetPlayerMaterial(playerInstance, playerId);
             _players[playerId] = playerInstance;
-            UnityEngine.Debug.Log($"Spawned {(isLocal ? "local" : "remote")} player {playerId}");
+            Debug.Log($"Spawned {(isLocal ? "local" : "remote")} player {playerId}");
         }
         
         private void SetPlayerMaterial(GameObject playerObject, int playerId)
@@ -93,11 +93,11 @@ namespace BestoNetSamples.Player
             if (meshRenderer != null)
             {
                 meshRenderer.material = playerId == 1 ? player1Material : player2Material;
-                UnityEngine.Debug.Log($"Setting player {playerId} material to {(playerId == 1 ? "Player1" : "Player2")} material");
+                Debug.Log($"Setting player {playerId} material to {(playerId == 1 ? "Player1" : "Player2")} material");
             }
             else
             {
-                UnityEngine.Debug.LogWarning($"Could not find MeshRenderer on player {playerId}");
+                Debug.LogWarning($"Could not find MeshRenderer on player {playerId}");
             }
         }
 
@@ -117,7 +117,7 @@ namespace BestoNetSamples.Player
         {
             if (!_players.TryGetValue(playerId, out GameObject playerObj)) return;
             
-            UnityEngine.Debug.Log($"Removing player {playerId}");
+            Debug.Log($"Removing player {playerId}");
             Destroy(playerObj);
             _players.Remove(playerId);
             OnPlayerDisconnected?.Invoke(playerId);
@@ -125,7 +125,7 @@ namespace BestoNetSamples.Player
 
         public void ClearPlayers()
         {
-            UnityEngine.Debug.Log("Clearing all players");
+            Debug.Log("Clearing all players");
             foreach (GameObject player in _players.Values)
             {
                 Destroy(player);

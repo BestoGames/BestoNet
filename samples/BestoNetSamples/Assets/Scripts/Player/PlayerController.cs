@@ -50,13 +50,13 @@ namespace BestoNetSamples.Player
             if (NetworkManager.Instance.IsHost)
             {
                 // Host is disconnecting - notify clients and return to menu
-                NetworkManager.Instance.SendMessage("HOST_DISCONNECTED");
+                NetworkManager.Instance.SendNetworkMessage("HOST_DISCONNECTED");
                 GameStateManager.Instance.ReturnToMainMenu();
             }
             else
             {
                 // Client is disconnecting - notify host and return to menu
-                NetworkManager.Instance.SendMessage("PLAYER_DISCONNECTED");
+                NetworkManager.Instance.SendNetworkMessage("PLAYER_DISCONNECTED");
                 GameStateManager.Instance.ReturnToMainMenu();
             }
         }

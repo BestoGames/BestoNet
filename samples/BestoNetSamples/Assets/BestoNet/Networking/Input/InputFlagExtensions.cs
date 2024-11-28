@@ -5,8 +5,6 @@ namespace BestoNet.Networking.Input
     [Flags]
     public enum InputFlag
     {
-        // add additional buttons as bits as needed
-        
         None = 0,
         // Directions (first 8 bits)
         Up = 1 << 0,
