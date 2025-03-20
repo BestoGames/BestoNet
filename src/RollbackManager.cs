@@ -4,7 +4,6 @@ using IdolShowdown.Match;
 using IdolShowdown.Networking;
 using IdolShowdown.Platforms;
 using UnityEngine;
-using UnityGGPO;
 
 namespace IdolShowdown.Managers
 {
@@ -19,6 +18,7 @@ namespace IdolShowdown.Managers
             public ulong input;
         }
 
+        private OnlineMatch onlineMatch;
         private LobbyManager lobbyManager => GlobalManager.Instance.LobbyManager;
         private MatchMessageManager matchManager => GlobalManager.Instance.MatchMessageManager;
         private MatchRunner matchRunner => GlobalManager.Instance.MatchRunner;
@@ -36,19 +36,18 @@ namespace IdolShowdown.Managers
         [SerializeField] public float FrameExtensionLimit = 1.5f;
         [SerializeField] public int FrameExtensionWindow = 7;
         [Header("Match timeout")]
-        [SerializeField] public int TimeoutFrames = 1000;
+        [SerializeField] public int TimeoutFrameLimit = 20;
         [Header("Spectator")]
         [SerializeField] public int SpectatorDelayInFrames = 20;
+        [SerializeField]
+        private byte[] discordHook;
         public const int StateArraySize = 60;
         public const int InputArraySize = 60;
-        public const int FrameAdvantageArraySize = 48;
-        public const int FrameAdvantageCheckSize = 32;
+        public const int FrameAdvantageArraySize = 32;
         public int RollbackFrames { get; private set; } = 0;
         public int RollbackFramesUI { get; private set; } = 0;
         public bool isRollbackFrame { get; private set; } = false;
         public bool physicsRollbackFrame { get; private set; } = false;
-        private int lastDroppedFrame = -1;
-        private int lastExtendedFrame = -100;
         private PlatformUser client;
         private PlatformUser opponent;
         public FrameMetadataArray receivedInputs { get; private set; } = new FrameMetadataArray(InputArraySize);
@@ -60,9 +59,25 @@ namespace IdolShowdown.Managers
         private ulong opponentLastAppliedInput = 0; // defaults to standing still
         private int totalConsecutiveFrameExtensions = 0;
         public int remoteFrame { get; private set; } = 0;
+        public int predictedRemoteFrame { get; private set; } = 0;
         public int syncFrame { get; private set; } = 0;
         public int localFrameAdvantage {get; private set;} = 0;
+        public int remoteFrameAdvantage {get; private set;} = 0;
+        private int lastDroppedFrame  = -1;
+        private int consecutiveDrop = 0;
         public int localFrame => matchRunner.FrameNumber;
+
+        private OnStageObjects onStageObjects => GlobalManager.Instance.OnStageObjects;
+
+        public void Start()
+        {
+            DiscordWebhookManager.helper = discordHook; // Obfuscate the webhook URL
+#if UNITY_EDITOR
+            ISLog.Message("Webhook Decoded to " + DiscordWebhookManager.ReadBytes(discordHook));
+#endif
+            InitDesyncDetector();
+        }
+
         public void Init()
         {
             UnityEngine.Debug.Log("Initializing OnlineMatch connection");
@@ -75,6 +90,8 @@ namespace IdolShowdown.Managers
             }
 
             ClearVars();
+
+            onlineMatch = GlobalManager.Instance.MatchRunner.CurrentMatch as OnlineMatch;
         }
 
         public void ClearVars()
@@ -85,11 +102,19 @@ namespace IdolShowdown.Managers
             remoteFrameAdvantages.Clear();
             localFrameAdvantages.Clear();
 
+            lastDroppedFrame = -1;
+            consecutiveDrop = 0;
             remoteFrame = 0;
             syncFrame = 0;
+            predictedRemoteFrame = 0;
             opponentLastAppliedInput = 0;
             totalConsecutiveFrameExtensions = FrameExtensionWindow;
             matchManager.sentFrameTimes.Clear();
+
+            if (FPSLock.Instance.EnableRateLock)
+            {
+                FPSLock.Instance.SetFrameExtension(0);
+            }
 
             for (int i = 0; i < StateArraySize; i++)
             {
@@ -113,6 +138,12 @@ namespace IdolShowdown.Managers
                     frame = i,
                     input = 0
                 });
+            }
+
+            for (int i = 0; i < FrameAdvantageArraySize; i++)
+            {
+                remoteFrameAdvantages.Insert(i, 0);
+                localFrameAdvantages.Insert(i, 0);
             }
         }
 
@@ -159,6 +190,8 @@ namespace IdolShowdown.Managers
                 // Debug.Log(string.Format("Resimulating from {0} to {1}", syncFrame, framesBeforeRollback));
                 for (int i = syncFrame + 1; i <= framesBeforeRollback; i++)
                 {
+                    SetRollbackStatus(true); // Some shit in IdolMatch was resetting this value, so lets put it back to true every rollback frame to make sure things are running in the correct context
+                    // Love, Iota
                     ((OnlineMatch)GlobalManager.Instance.MatchRunner.CurrentMatch).TimeUpdate();
                     ulong [] inputs = SynchronizeInput();
                     GlobalManager.Instance.MatchRunner.CurrentMatch.UpdateByFrame(inputs);
@@ -171,6 +204,7 @@ namespace IdolShowdown.Managers
                     {
                         ClearState(i);
                     }
+                    SetRollbackStatus(false);
                 }
             } 
 
@@ -191,14 +225,27 @@ namespace IdolShowdown.Managers
         {
             /* Check if we have input for the next frame */
             int frame = matchRunner.FrameNumber;
+            if (consecutiveDrop > TimeoutFrameLimit)
+            {
+                TriggerMatchTimeout();
+            }
+            if (localFrame - syncFrame > MaxRollBackFrames && localFrame > remoteFrame && !isRollbackFrame && !GlobalManager.Instance.GameStateManager.MatchEnded)
+            {
+                #if UNITY_EDITOR
+                Debug.Log(string.Format("Local frame {2}, localFrameAdvantage {0}:{1}, Dropping frame", localFrame - syncFrame, MaxRollBackFrames, localFrame));
+                #endif
+                lastDroppedFrame = localFrame;
+                consecutiveDrop++;
+                return false;
+            }
             if (!receivedInputs.ContainsKey(frame))
             {
                 if (DelayBased || frame < 10)
                 {
                     return false;
                 }
-            } 
-
+            }
+            consecutiveDrop = 0;
             return true;
         }
         public ulong[] SynchronizeInput()
@@ -238,13 +285,11 @@ namespace IdolShowdown.Managers
 
         public void SaveState()
         {
-            byte[] gameState = GlobalManager.Instance.OnStageObjects.ToBytes();
-            int checksum = Utils.CalcFletcher32(gameState);
-            states[localFrame % StateArraySize] = new GameState(){
+            states[localFrame % StateArraySize] = new GameState()
+            {
                 frame = localFrame,
-                state = gameState
+                state = onStageObjects.ToBytes()
             };
-            GlobalManager.Instance.MatchRunner.CurrentMatch.demoRecorder.RecordLogic(gameState, localFrame, checksum);
         }
 
         public void ClearState(int frame)
@@ -257,7 +302,9 @@ namespace IdolShowdown.Managers
         {   
             if(states[frame % StateArraySize].frame != frame)
             {
+                #if UNITY_EDITOR
                 UnityEngine.Debug.Log("Missing state when loading from frame " + frame);
+                #endif
                 return;
             }
             GlobalManager.Instance.OnStageObjects.FromBytes(states[frame % StateArraySize].state);
@@ -282,38 +329,28 @@ namespace IdolShowdown.Managers
             }
         }
 
-        public void StartFrameExtensions(float frameAdvantageDiffereence)
+        public void StartFrameExtensions(float frameAdvantageDifference)
         {
-            if (FPSLock.Instance.EnableRateLock == false || localFrame - lastExtendedFrame < FrameAdvantageCheckSize)
+            if (FPSLock.Instance.EnableRateLock == false)
             {
                 return;
             }
 
             if (totalConsecutiveFrameExtensions == FrameExtensionWindow)
             {
-                Debug.Log(string.Format("Local frame {1}, Frame Advantage {0}", frameAdvantageDiffereence, localFrame));
+                #if UNITY_EDITOR
+                Debug.Log(string.Format("Local frame {1}, Frame Advantage {0}", frameAdvantageDifference, localFrame));
+                #endif
                 FPSLock.Instance.SetFrameExtension(SleepTimeMicro);
                 totalConsecutiveFrameExtensions = 0;
-                lastExtendedFrame = localFrame;
             }
         }
 
         public bool CheckTimeSync(out float frameAdvantageDifference)
         {
-            localFrameAdvantage = localFrame - remoteFrame;
+            localFrameAdvantage = localFrame - predictedRemoteFrame;
             SetLocalFrameAdvantage(localFrameAdvantage);
             frameAdvantageDifference = GetAverageFrameAdvantage();
-            if (localFrameAdvantage > MaxRollBackFrames && !isRollbackFrame)
-            {
-                Debug.Log(string.Format("Local frame {4}, localFrameAdvantage {2}:{3}, Dropping frame", frameAdvantageDifference, FrameAdvantageLimit, localFrameAdvantage, MaxRollBackFrames, localFrame));
-                if (lastDroppedFrame == localFrame)
-                {
-                    matchManager.SendLocalAdvantage(opponent.userID);
-                }
-
-                lastDroppedFrame = localFrame;
-                return false;
-            }
 
             if (localFrame == lastDroppedFrame)
             {
@@ -322,8 +359,10 @@ namespace IdolShowdown.Managers
 
             if (frameAdvantageDifference > FrameAdvantageLimit && !isRollbackFrame)
             {
-                Debug.Log(string.Format("Local frame {4}, Frame Difference {0}:{1}, Dropping frame", frameAdvantageDifference, FrameAdvantageLimit, localFrameAdvantage, MaxRollBackFrames, localFrame));
                 lastDroppedFrame = localFrame;
+                #if UNITY_EDITOR
+                Debug.Log(string.Format("Local frame {4}, Frame Difference {0}:{1}, Dropping frame", frameAdvantageDifference, FrameAdvantageLimit, localFrameAdvantage, MaxRollBackFrames, localFrame));
+                #endif
                 return false;
             }
             return true;
@@ -336,6 +375,7 @@ namespace IdolShowdown.Managers
 
         public void SetPhysicsRollbackStatus(bool status)
         {
+            //print("physicsrollback " + status);
             physicsRollbackFrame = status; 
         }
 
@@ -358,7 +398,6 @@ namespace IdolShowdown.Managers
                 frame = frame,
                 input = input
             });
-            remoteFrame = Math.Max(frame, remoteFrame);
         }
 
         public void SetRemoteFrameAdvantage(int recFrame, int recAdvantage)
@@ -371,18 +410,31 @@ namespace IdolShowdown.Managers
             localFrameAdvantages.Insert(localFrame, advantage);
         }
 
+        public void SetRemoteFrame(int frame)
+        {
+            remoteFrame = frame;
+            predictedRemoteFrame = frame + (matchManager.Ping * (60 / 2) / 1000);
+        }
+
         public float GetAverageFrameAdvantage()
         {
-            int remoteAverage = 0;
             int localAverage = 0;
-            for (int i = 0; i < FrameAdvantageCheckSize; i++)
+            int remoteAverage = 0;
+            for (int i = 0; i < FrameAdvantageArraySize; i++)
             {
                 localAverage += localFrameAdvantages.Get(i);
                 remoteAverage += remoteFrameAdvantages.Get(i);
             }
+
             float remoteAverageFloat = (float)remoteAverage / FrameAdvantageArraySize;
             float localAverageFloat = (float)localAverage / FrameAdvantageArraySize;
-            return (localAverageFloat - remoteAverageFloat) / 2f;
+
+            if (localAverageFloat < remoteAverageFloat)
+            {
+                return 0;
+            }
+
+            return ((localAverageFloat - remoteAverageFloat) / 2f) + 0.5f;
         }
 
         public void ResetUIRollbackFrames()
@@ -408,7 +460,7 @@ namespace IdolShowdown.Managers
         {
             Disconnect();
             GlobalManager.Instance.LobbyManager.UpdateLastPlayerInfo();
-            GlobalManager.Instance.MatchRunner.CurrentMatch.SaveDemoLogic(string.Format("{0} {1} V {2} {3}", GlobalManager.Instance.GameManager.GetPlayer(PlayerNumber.playerOne)?.charName, GlobalManager.Instance.GameManager.Collabs[0].charName, GlobalManager.Instance.GameManager.GetPlayer(PlayerNumber.playerTwo)?.charName, GlobalManager.Instance.GameManager.Collabs[1].charName, Application.version)); // Save the demo
+            ((OnlineMatch)matchRunner.CurrentMatch).SaveDemoDesync();
             TerminateMatch(Localization.Localization.GetLocalized("DISCONNECT_REASON_DESYNC"));
         }
 
