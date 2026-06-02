@@ -1,11 +1,15 @@
 ﻿/*
-*  Author: Iota
+*  Author: IotaBoyBad (Rinat Satybaldinov)
 *  Class Description: Match logic during Online
 */
 
 using IdolShowdown.Managers;
 using IdolShowdown.Platforms;
 using IdolShowdown.Networking;
+using IdolShowdown.Demo;
+using System.Collections.Generic;
+using System.Linq;
+using System.Diagnostics;
 
 namespace IdolShowdown.Match
 {
@@ -20,7 +24,7 @@ namespace IdolShowdown.Match
         private RollbackManager rollbackManager => GlobalManager.Instance.RollbackManager;
         private bool isPlayer1Local = false;
         private ISSpectator spectatorLogic;
-        private int timeoutFrames = 0;
+        private PVPDemoRecorder recorder;
 
         public override void InitMatch()
         {
@@ -28,18 +32,25 @@ namespace IdolShowdown.Match
             StartMe();
             localPlayerIndex = GlobalManager.Instance.LobbyManager.LobbyMemberMe.userRank == PlayerLobbyType.playerOne ? 0 : 1;
             remotePlayerIndex = GlobalManager.Instance.LobbyManager.LobbyMemberMe.userRank == PlayerLobbyType.playerOne ? 1 : 0;
-            demoFileManager.PrepSavingDemo(GetFighterNames());
+            //demoFileManager.PrepSavingDemo(GetFighterNames());
 
             isPlayer1Local = GlobalManager.Instance.LobbyManager.LobbyMemberMe.userRank == PlayerLobbyType.playerOne;
             spectatorLogic = FindObjectOfType<IdolShowdown.Networking.ISSpectator>();
             // Reset spectator logic
             spectatorLogic.ResetMe();
 
-            rollbackManager.InitDesyncDetector();
+            if (TryGetComponent(out recorder) == false)
+            {
+                recorder = gameObject.AddComponent<PVPDemoRecorder>();
+            }
+
+
             if (GlobalManager.Instance.LobbyManager.LobbyMemberMe.userRank != PlayerLobbyType.spectator)
             {
                 GlobalManager.Instance.RollbackManager.Init();
             }
+
+            recorder.Init();
         }
 
         // Get called when match is killed/closed.
@@ -48,7 +59,7 @@ namespace IdolShowdown.Match
             // GlobalManager.Instance.OnlineComponents.ggpoMatchManager.Disconnect();
             GlobalManager.Instance.UIManager.GameplayUIHandler.StopComponents();
             GlobalManager.Instance.GameStateManager.StopMatchLogic();
-            
+
             // Reset key vars
             runMatchLogic = false;
             started = false;
@@ -77,15 +88,19 @@ namespace IdolShowdown.Match
                 {
                     GlobalManager.Instance.UIManager.MatchStart();
                     GlobalManager.Instance.UIManager.GameplayUIHandler.UpdateComponents();
-                    StartDemoLogic();
+
+                    rollbackManager.desyncDetector.SetDemoRecorder(recorder);
+
                     started = true;
                 }
-                
+
                 if (FrameNumber <= rollbackManager.InputDelay)
                 {
+                    recorder.RecordDebugFrame(frameNumber, syncedInput);
+                    recorder.RecordFrame(frameNumber);
                     GlobalManager.Instance.RollbackManager.SaveState();
                 }
-                                
+
                 localPlayerInput = 0;
                 // Clear input when game is paused 
                 if (IsPaused == false && charComponents[localPlayerIndex].StateManager.InCountdownPause == false)
@@ -93,24 +108,23 @@ namespace IdolShowdown.Match
 
                 syncedInput[0] = 0;
                 syncedInput[1] = 0;
-                
+
                 bool TimeSynced = rollbackManager.CheckTimeSync(out float frameAdvantageDifference);
                 if (TimeSynced)
                 {
-                    timeoutFrames = 0;
+                    GlobalManager.Instance.MatchMessageManager.SetInputBufferSize();
                     rollbackManager.RollbackEvent();
 
                     // Save frame 0
                     if (isPlayer1Local && frameNumber <= GlobalManager.Instance.RollbackManager.InputDelay)
                         spectatorLogic.P1AddToBuffer(syncedInput, frameNumber);
 
-
                     TimeUpdate();
                     rollbackManager.SendLocalInput(localPlayerInput);
                     syncedInput = rollbackManager.SynchronizeInput();
-                    
+
                     /* When in delay based mode, do not update this frame and wait instead*/
-                    if(!rollbackManager.AllowUpdate())
+                    if (!rollbackManager.AllowUpdate())
                     {
                         frameNumber--;
                         return;
@@ -121,28 +135,24 @@ namespace IdolShowdown.Match
                     // Update match UI
                     GlobalManager.Instance.UIManager.GameplayUIHandler.UpdateMe();
                     rollbackManager.DesyncCheck();
-                    
+
 
                     if (isPlayer1Local && frameNumber % 60 == 0)
                     {
                         GlobalManager.Instance.LobbyManager.SpectatorLogic.SpectatorP1Update();
-                    } 
+                    }
+
+                    if (frameNumber % 600 == 0)
+                    {
+                        GlobalManager.Instance.RollbackManager.UpdateInputDelay();
+                    }
 
                     if (frameAdvantageDifference > rollbackManager.FrameExtensionLimit)
                     {
                         rollbackManager.StartFrameExtensions(frameAdvantageDifference);
                     }
-                    
+
                     rollbackManager.ExtendFrame();
-                    
-                }
-                else
-                {
-                    timeoutFrames++;
-                    if (timeoutFrames > rollbackManager.TimeoutFrames)
-                    {
-                        rollbackManager.TriggerMatchTimeout();
-                    }
 
                 }
             }
@@ -154,16 +164,22 @@ namespace IdolShowdown.Match
             gameStateManager.UpdateMe();
             ReadInputOnline(inputs);
             AddSpectatorFrames();
+            RecordInputs();
             UpdateGeneral();
             SyncTransform();
             UpdatePhysics();
             UpdatePhysicsManager();
+            recorder.RecordDebugFrame(frameNumber, inputs);
 
-            if (!rollbackManager.isRollbackFrame && !rollbackManager.DelayBased)
+            if (!rollbackManager.DelayBased)
             {
-                rollbackManager.SaveState();
+                if (!rollbackManager.isRollbackFrame)
+                {
+                    rollbackManager.SaveState();
+                }
             }
         }
+
         public override void UpdateByFrame(ulong[] inputs, bool readInput = true)
         {
             GameUpdate(inputs);
@@ -191,33 +207,62 @@ namespace IdolShowdown.Match
 
         public void AddSpectatorFrames()
         {
+            if (rollbackManager.isRollbackFrame)
+            {
+                return;
+            }
+
             if (isPlayer1Local)
             {
                 // Save last inputs
                 int frameDelay = frameNumber - rollbackManager.SpectatorDelayInFrames;
-                if(frameDelay > 0 && rollbackManager.receivedInputs.ContainsKey(frameDelay) && rollbackManager.clientInputs.ContainsKey(frameDelay))
+                if (frameDelay > 0 && rollbackManager.receivedInputs.ContainsKey(frameDelay) && rollbackManager.clientInputs.ContainsKey(frameDelay))
                 {
-                    spectatorLogic.P1AddToBuffer(new ulong[]{rollbackManager.clientInputs.Get(frameDelay).input, rollbackManager.receivedInputs.Get(frameDelay).input}, frameDelay);
+                    spectatorLogic.P1AddToBuffer(new ulong[] { rollbackManager.clientInputs.Get(frameDelay).input, rollbackManager.receivedInputs.Get(frameDelay).input }, frameDelay);
                 }
             }
         }
 
-        private string[] GetFighterNames()
+        public void RecordInputs()
         {
-            string[] fighterNames = new string[2];
-            int i = 0;
-
-            foreach (PlatformUser lobbyMember in GlobalManager.Instance.LobbyManager.LobbyMembers)
+            if (rollbackManager.isRollbackFrame)
             {
-                if (lobbyMember.userRank != PlayerLobbyType.spectator)
-                {
-                    fighterNames[i] = lobbyMember.userName;
-                    i++;
-                    if(i>1) { break; }
-                }
+                return;
             }
 
-            return fighterNames;
+            int frameDelay = frameNumber - rollbackManager.SpectatorDelayInFrames;
+            if (frameDelay >= 0 && rollbackManager.receivedInputs.ContainsKey(frameDelay) && rollbackManager.clientInputs.ContainsKey(frameDelay))
+            {
+                if (GlobalManager.Instance.LobbyManager.LobbyMemberMe.userRank == PlayerLobbyType.playerOne)
+                {
+                    recorder.RecordFrame(frameDelay, new ulong[2] { rollbackManager.clientInputs.Get(frameDelay).input, rollbackManager.receivedInputs.Get(frameDelay).input });
+                }
+                else
+                {
+                    recorder.RecordFrame(frameDelay, new ulong[2] { rollbackManager.receivedInputs.Get(frameDelay).input, rollbackManager.clientInputs.Get(frameDelay).input });
+                }
+            }
+        }
+
+        public override void SaveDemo()
+        {
+            recorder.MarkDemoEnd();
+            GlobalManager.Instance.DemoManager.SaveDemoToFile(recorder.GetDemo());
+        }
+
+        public void SaveDemoDesync()
+        {
+            SaveDebugInputs();
+            recorder.MarkDemoEnd();
+            GlobalManager.Instance.DemoManager.SaveDemoToFileDesync(recorder.GetDemo());
+        }
+
+        public void SaveDebugInputs()
+        {
+            string[] p1Logs = recorder.GetP1DesyncLogs();
+            string[] p2Logs = recorder.GetP2DesyncLogs();
+            GlobalManager.Instance.FilesManager.SaveToLog("P2Desync.log", p2Logs);
+            GlobalManager.Instance.FilesManager.SaveToLog("P1Desync.log", p1Logs);
         }
     }
 }
